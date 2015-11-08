@@ -1,0 +1,111 @@
+<html>
+	<head>
+		<style>
+			body{font-family:Arial;background:#354B5C;color:#FFF;font-size:11px}
+			input{padding:3px;font-size:11px;color:#FFF;background:#2B4255;border:1px solid #4F6D84}
+			textarea{width:700px;height:200px;display:block;padding:3px;color:#FFF;background:#2B4255;border:1px solid #4F6D84;margin:20px 0}
+			button{background:#4F6D84;color:#FFF;border:1px solid #2B4255;padding:10px 30px;border-radius:3px;cursor:pointer;margin:0 0 20px}
+		</style>
+		<script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
+		<script>
+			var jsonpcallbacks = [];
+			
+			function jsonp(data){
+				if(jsonpcallbacks.length)
+					jsonpcallbacks.pop()(data);
+			}
+			function callJsonp(url, cb){
+				jsonpcallbacks.push(cb);
+				url = "http://" + $("input[name=ipaddress]").val() + url;
+				$("body").append("<script src=\"" + url + "\"></s"+"cript>");
+			}
+			var COLOR_RED =     "%02";
+			var COLOR_GREEN =   "%03";
+			var COLOR_ORANGE =  "%04";
+			var COLOR_BLINK_RED =     "%05";
+			var COLOR_BLINK_GREEN =   "%06";
+			var COLOR_BLINK_ORANGE =  "%07";
+						
+			function colorToCode(color){
+				switch(color){
+					case "red": return COLOR_RED;
+					case "green": return COLOR_GREEN;
+					case "orange": return COLOR_ORANGE;
+					case "blinkred": return COLOR_BLINK_RED;
+					case "blinkgreen": return COLOR_BLINK_GREEN;
+					case "blinkorange": return COLOR_BLINK_ORANGE;
+				}
+			}
+			function callLED(){
+				
+				var currentColor = ["green"];
+				var send = COLOR_GREEN;
+				
+				var val = $("textarea").val();
+				
+				function checkCurrentColor(str,color, colorCode){
+					str = (str+"").toLowerCase();					
+					if(str == color){
+						if(currentColor[currentColor.length-1] != color){
+							currentColor.push(color);
+							send += colorCode;
+						}
+					}else if(str == "/" + color){
+						if(currentColor[currentColor.length-1] == color){
+							if(currentColor.length > 1){
+								currentColor.pop();
+								send += colorToCode(currentColor[currentColor.length-1]);
+							}
+						}
+					}
+				}
+				
+				while(val.length){
+					var m = (/\<([^>]*)\>/).exec(val);
+					if(!m) break;		
+					send += (val.substring(0,m.index));
+					val = val.substring(m.index+m[0].length);
+					checkCurrentColor(m[1], "green", COLOR_GREEN);
+					checkCurrentColor(m[1], "red", COLOR_RED);
+					checkCurrentColor(m[1], "orange", COLOR_ORANGE);
+					checkCurrentColor(m[1], "blinkgreen", COLOR_BLINK_GREEN);
+					checkCurrentColor(m[1], "blinkred", COLOR_BLINK_RED);
+					checkCurrentColor(m[1], "blinkorange", COLOR_BLINK_ORANGE);
+					if(m[1].match(/[0-9]+/)){
+						for(var i = parseInt(m[1]); i > 0; i--){
+							send += "%0D"
+						}
+					}
+				}	
+				
+				var lines = send.split('\n');
+				send = lines.join('%0A');
+				
+				callJsonp("/led/clear",function(){
+					callJsonp("/led/print?text=" + send, function(){
+						
+					});
+				});
+								
+				return false;
+			}
+			var w = "";
+			for(var i = 13; i <= 250; i++){
+				var x = i.toString(16);
+				while(x.length < 2) x = "0"+x;
+				w += "%" + x;
+			}
+				console.log(w);
+		</script>
+	</head>
+	<body>
+		<h1>Led Controller</h1>
+		<label>IP Address <input type="text" name="ipaddress" value="172.16.225.6"/></label>
+		<textarea>&lt;green&gt;Green&lt;/green&gt;
+&lt;orange&gt;Orange&lt;/orange&gt;
+&lt;red&gt;Red&lt;/red&gt;</textarea>
+		<button onclick="callLED();">Send</button>
+		<h2>Charecters Map</h2>
+		<img src="letters.png"/>
+	</body>
+</html>
